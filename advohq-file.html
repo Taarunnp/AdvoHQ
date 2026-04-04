@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AdvoHQ — Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --navy:    #1e2d4a; --navy-2: #2c3e4e; --navy-3: #3d5166;
+      --cream:   #f5f0e8; --cream-2: #ede6d7; --cream-3: #e4dccb;
+      --gold:    #b8922a; --gold-2: #d4aa52;
+      --muted:   #7a8fa3; --white: #ffffff; --ink: #1a2230;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); }
+
+    .app { display: flex; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 52px; background: var(--navy);
+      display: flex; flex-direction: column; align-items: center; padding: 14px 0;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-top { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .sidebar-bottom { display: flex; flex-direction: column; align-items: center; }
+    .s-btn {
+      width: 36px; height: 36px; border-radius: 8px; border: none;
+      background: transparent; color: rgba(245,240,232,0.5);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background 0.18s, color 0.18s;
+      position: relative; text-decoration: none;
+    }
+    .s-btn:hover { background: rgba(245,240,232,0.1); color: rgba(245,240,232,0.9); }
+    .s-btn.active { background: rgba(184,146,42,0.18); color: var(--gold-2); }
+    .s-btn svg { width: 18px; height: 18px; stroke-width: 1.7; }
+    .s-divider { width: 24px; height: 1px; background: rgba(245,240,232,0.1); margin: 6px 0; }
+    .s-btn[data-tip]::after {
+      content: attr(data-tip); position: absolute; left: calc(100% + 10px); top: 50%;
+      transform: translateY(-50%); background: var(--ink); color: var(--cream);
+      font-size: 0.72rem; font-weight: 500; padding: 4px 10px; border-radius: 6px;
+      white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 99;
+    }
+    .s-btn[data-tip]:hover::after { opacity: 1; }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--gold); color: var(--cream); font-weight: 600; font-size: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border: 2px solid rgba(245,240,232,0.15);
+      transition: transform 0.15s, box-shadow 0.15s; margin-top: 8px;
+    }
+    .user-avatar:hover { transform: scale(1.06); box-shadow: 0 0 0 3px rgba(212,170,82,0.3); }
+
+    /* ── MAIN ── */
+    .main { margin-left: 52px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; overflow: hidden; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 40;
+      background: rgba(245,240,232,0.95); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--cream-2);
+      padding: 0 20px; height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 8px; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.82rem; font-weight: 500; color: var(--muted);
+      background: none; border: none; cursor: pointer; padding: 6px 8px;
+      border-radius: 8px; transition: background 0.15s, color 0.15s; text-decoration: none;
+    }
+    .back-btn:hover { background: var(--cream-2); color: var(--navy); }
+    .back-btn svg { width: 15px; height: 15px; stroke-width: 2; }
+    .topbar-sep { color: var(--cream-3); }
+    .topbar-filename {
+      font-size: 0.88rem; font-weight: 600; color: var(--ink);
+      max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .topbar-badge {
+      font-size: 0.67rem; font-weight: 600; background: rgba(184,146,42,0.12);
+      color: var(--gold); border: 1px solid rgba(184,146,42,0.25);
+      padding: 3px 9px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .save-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--navy); color: var(--cream); border: none; border-radius: 9px;
+      padding: 7px 16px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .save-btn:hover { background: var(--navy-2); }
+    .save-btn svg { width: 14px; height: 14px; stroke-width: 2; }
+    .ai-toggle-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: transparent; color: var(--navy-2); border: 1.5px solid var(--cream-3); border-radius: 9px;
+      padding: 6px 14px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .ai-toggle-btn:hover { background: var(--cream-2); }
+    .ai-toggle-btn.active {
+      background: rgba(184,146,42,0.12); color: var(--gold);
+      box-shadow: 0 0 0 1.5px var(--gold-2); border-color: transparent;
+    }
+    .ai-toggle-btn svg { width: 14px; height: 14px; stroke-width: 2; }
+
+    /* ── EDITOR LAYOUT ── */
+    .editor-layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 52px); }
+
+    /* ── TOOLS PANEL ── */
+    .tools-panel {
+      width: 64px; flex-shrink: 0;
+      background: var(--white); border-right: 1px solid var(--cream-2);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px 0; gap: 4px; overflow-y: auto;
+    }
+    .tool-section-label {
+      font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      width: 100%; text-align: center; padding: 6px 0 2px;
+    }
+    .tool-sep { width: 32px; height: 1px; background: var(--cream-2); margin: 6px 0; }
+    .tool-btn {
+      width: 40px; height: 40px; border-radius: 10px; border: 1.5px solid transparent;
+      background: transparent; color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s; gap: 2px; position: relative;
+    }
+    .tool-btn:hover { background: var(--cream); color: var(--navy); border-color: var(--cream-2); }
+    .tool-btn.active {
+      background: rgba(184,146,42,0.1); color: var(--gold);
+      border-color: var(--gold-2);
+    }
+    .tool-btn svg { width: 18px; height: 18px; stroke-width: 1.8; flex-shrink: 0; }
+    .tool-label { font-size: 0.54rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1; }
+
+    /* Colour swatches */
+    .color-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+      padding: 4px 10px; width: 100%;
+    }
+    .color-swatch {
+      width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s;
+      flex-shrink: 0;
+    }
+    /* Checkerboard backdrop so translucent highlight swatches show through */
+    .hl-colors .color-swatch {
+      background-image: repeating-conic-gradient(#d0ccc6 0% 25%, #fff 0% 50%);
+      background-size: 8px 8px;
+      position: relative;
+    }
+    .hl-colors .color-swatch::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: var(--hl-bg);
+    }
+    .hl-colors .color-swatch[data-color="rgba(255,235,59,0.55)"]  { --hl-bg: rgba(255,230,0,0.35); }
+    .hl-colors .color-swatch[data-color="rgba(102,187,106,0.5)"]  { --hl-bg: rgba(72,199,89,0.35); }
+    .hl-colors .color-swatch[data-color="rgba(239,83,80,0.45)"]   { --hl-bg: rgba(255,80,80,0.35); }
+    .hl-colors .color-swatch[data-color="rgba(66,165,245,0.5)"]   { --hl-bg: rgba(50,160,255,0.35); }
+    .hl-colors .color-swatch[data-color="rgba(255,152,0,0.5)"]    { --hl-bg: rgba(255,160,0,0.35); }
+    .hl-colors .color-swatch[data-color="rgba(186,104,200,0.5)"]  { --hl-bg: rgba(190,100,210,0.35); }
+    .color-swatch:hover { transform: scale(1.2); }
+    .color-swatch.selected { border-color: var(--navy); transform: scale(1.15); }
+
+    /* Pen colours */
+    .pen-colors .color-swatch[data-color="#1a2230"] { background: #1a2230; }
+    .pen-colors .color-swatch[data-color="#e53e3e"] { background: #e53e3e; }
+    .pen-colors .color-swatch[data-color="#2b6cb0"] { background: #2b6cb0; }
+    .pen-colors .color-swatch[data-color="#276749"] { background: #276749; }
+    .pen-colors .color-swatch[data-color="#b8922a"] { background: #b8922a; }
+    .pen-colors .color-swatch[data-color="#6b46c1"] { background: #6b46c1; }
+
+
+
+    /* Stroke size */
+    .size-row {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 4px 10px;
+    }
+    .size-dot {
+      border-radius: 50%; background: var(--navy-3); cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s; flex-shrink: 0;
+    }
+    .size-dot:hover { transform: scale(1.25); }
+    .size-dot.selected { box-shadow: 0 0 0 2px var(--gold); }
+    .size-dot.sm { width: 5px;  height: 5px; }
+    .size-dot.md { width: 9px;  height: 9px; }
+    .size-dot.lg { width: 14px; height: 14px; }
+
+    /* ── DOCUMENT AREA ── */
+    .document-area {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      background: #d8d3cb; display: flex; justify-content: center;
+      padding: 32px 24px 48px;
+    }
+    .document-area::-webkit-scrollbar { width: 5px; }
+    .document-area::-webkit-scrollbar-track { background: transparent; }
+    .document-area::-webkit-scrollbar-thumb { background: var(--cream-3); border-radius: 3px; }
+
+    .doc-page-wrap {
+      position: relative; width: 100%; max-width: 780px;
+    }
+    .doc-page {
+      background: var(--white); border-radius: 4px;
+      box-shadow: 0 4px 28px rgba(30,45,74,0.16), 0 1px 4px rgba(30,45,74,0.08);
+      min-height: 1060px; position: relative; overflow: hidden;
+    }
+
+    /* Canvas sits on top */
+    #annotationCanvas {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 10; display: block;
+      cursor: crosshair;
+    }
+    #annotationCanvas.eraser-mode { cursor: cell; }
+
+    /* Empty-state hint */
+    .doc-hint {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px;
+      pointer-events: none; z-index: 1;
+    }
+    .doc-hint svg { width: 48px; height: 48px; color: var(--cream-2); stroke-width: 1.2; }
+    .doc-hint p { font-size: 0.82rem; color: var(--cream-3); font-weight: 500; }
+
+    /* ── AI SIDEBAR ── */
+    .ai-sidebar {
+      width: 0; flex-shrink: 0; overflow: hidden;
+      display: flex; flex-direction: column;
+      background: var(--white); border-left: 1px solid transparent;
+      transition: width 0.32s cubic-bezier(0.4,0,0.2,1), border-color 0.32s;
+    }
+    .ai-sidebar.open { width: 340px; border-left-color: var(--cream-2); }
+    .ai-sidebar-inner { width: 340px; display: flex; flex-direction: column; height: 100%; }
+
+    .ai-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px; height: 52px; border-bottom: 1px solid var(--cream-2); flex-shrink: 0;
+    }
+    .ai-title { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 600; color: var(--ink); }
+    .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--navy)); }
+    .ai-close {
+      width: 28px; height: 28px; border-radius: 7px; border: none;
+      background: transparent; color: var(--muted);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .ai-close:hover { background: var(--cream-2); color: var(--navy); }
+    .ai-close svg { width: 14px; height: 14px; stroke-width: 2.5; }
+
+    .ai-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+    .ai-suggestions { padding: 20px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+    .ai-suggestion-label {
+      font-size: 0.67rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted); padding: 0 4px; margin-bottom: 4px;
+    }
+    .ai-chip {
+      display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px;
+      border: 1.5px solid var(--cream-2); background: var(--cream); cursor: pointer; text-align: left;
+      transition: border-color 0.18s, background 0.18s, transform 0.15s;
+    }
+    .ai-chip:hover { border-color: var(--gold-2); background: rgba(184,146,42,0.04); transform: translateX(2px); }
+    .chip-arrow { width: 16px; height: 16px; flex-shrink: 0; color: var(--gold); }
+    .chip-arrow svg { width: 16px; height: 16px; stroke-width: 2; }
+    .chip-text { font-size: 0.81rem; font-weight: 500; color: var(--navy-2); line-height: 1.3; }
+
+    .ai-response { display: none; padding: 16px; flex-direction: column; gap: 12px; }
+    .ai-response.show { display: flex; }
+    .ai-response-bubble {
+      background: linear-gradient(135deg, rgba(30,45,74,0.03), rgba(184,146,42,0.05));
+      border: 1px solid var(--cream-2); border-radius: 12px;
+      padding: 14px 16px; font-size: 0.82rem; line-height: 1.75; color: var(--ink);
+    }
+    .ai-response-label {
+      font-size: 0.67rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+    }
+    .ai-response-label::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+    .typing-indicator { display: none; align-items: center; gap: 5px; padding: 8px 4px; }
+    .typing-indicator.show { display: flex; }
+    .typing-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--gold); opacity: 0.5;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    .ai-input-area { padding: 12px 16px 16px; border-top: 1px solid var(--cream-2); flex-shrink: 0; }
+    .ai-input-wrap {
+      display: flex; align-items: flex-end; gap: 8px;
+      background: var(--cream); border: 1.5px solid var(--cream-3);
+      border-radius: 12px; padding: 10px 12px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .ai-input-wrap:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,146,42,0.1); }
+    .ai-icon-btn {
+      width: 28px; height: 28px; border-radius: 7px; border: none;
+      background: transparent; color: var(--muted);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .ai-icon-btn:hover { background: var(--cream-2); color: var(--navy); }
+    .ai-icon-btn svg { width: 15px; height: 15px; stroke-width: 1.8; }
+    .ai-textarea {
+      flex: 1; border: none; outline: none; background: transparent;
+      font-family: 'DM Sans', sans-serif; font-size: 0.83rem; color: var(--ink);
+      resize: none; min-height: 20px; max-height: 100px; line-height: 1.5;
+    }
+    .ai-textarea::placeholder { color: var(--muted); }
+    .ai-send-btn {
+      width: 30px; height: 30px; border-radius: 8px; border: none;
+      background: var(--navy); color: var(--cream); display: flex; align-items: center;
+      justify-content: center; cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .ai-send-btn:hover { background: var(--navy-2); transform: scale(1.05); }
+    .ai-send-btn svg { width: 13px; height: 13px; stroke-width: 2.2; }
+    .ai-disclaimer { font-size: 0.67rem; color: var(--muted); text-align: center; margin-top: 8px; line-height: 1.4; }
+    .ai-disclaimer a { color: var(--gold); text-decoration: none; }
+
+    /* ── NOTES PANEL ── */
+    .notes-panel {
+      width: 0; flex-shrink: 0; overflow: hidden;
+      display: flex; flex-direction: column;
+      background: #fffef9; border-left: 1px solid transparent;
+      transition: width 0.32s cubic-bezier(0.4,0,0.2,1), border-color 0.32s;
+    }
+    .notes-panel.open { width: 300px; border-left-color: var(--cream-2); }
+    .notes-inner { width: 300px; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+    .notes-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; height: 52px; border-bottom: 1px solid var(--cream-2); flex-shrink: 0;
+    }
+    .notes-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.88rem; font-weight: 600; color: var(--ink);
+    }
+    .notes-title svg { width: 15px; height: 15px; stroke-width: 2; color: var(--gold); }
+    .notes-close {
+      width: 28px; height: 28px; border-radius: 7px; border: none;
+      background: transparent; color: var(--muted);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .notes-close:hover { background: var(--cream-2); color: var(--navy); }
+    .notes-close svg { width: 14px; height: 14px; stroke-width: 2.5; }
+
+    .notes-list {
+      flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .notes-list::-webkit-scrollbar { width: 4px; }
+    .notes-list::-webkit-scrollbar-thumb { background: var(--cream-3); border-radius: 3px; }
+
+    .note-empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; color: var(--cream-3); padding: 40px 20px; text-align: center;
+    }
+    .note-empty svg { width: 36px; height: 36px; stroke-width: 1.3; }
+    .note-empty p { font-size: 0.8rem; font-weight: 500; }
+
+    .note-card {
+      background: var(--white); border: 1px solid var(--cream-2); border-radius: 12px;
+      padding: 12px 14px; position: relative; group: true;
+      box-shadow: 0 1px 6px rgba(30,45,74,0.04);
+      animation: noteSlide 0.2s ease;
+    }
+    @keyframes noteSlide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .note-card:hover .note-delete { opacity: 1; }
+    .note-text {
+      font-size: 0.82rem; line-height: 1.65; color: var(--ink);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .note-meta {
+      margin-top: 8px; font-size: 0.66rem; color: var(--muted);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .note-delete {
+      opacity: 0; background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: 2px 4px; border-radius: 4px;
+      font-size: 0.7rem; transition: opacity 0.15s, color 0.15s, background 0.15s;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .note-delete:hover { color: #e53e3e; background: rgba(229,62,62,0.08); }
+    .note-delete svg { width: 11px; height: 11px; stroke-width: 2; }
+
+    .notes-input-area {
+      padding: 12px 14px 16px; border-top: 1px solid var(--cream-2); flex-shrink: 0;
+      background: #fffef9;
+    }
+    .notes-textarea {
+      width: 100%; border: 1.5px solid var(--cream-3); border-radius: 11px;
+      padding: 10px 12px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.83rem; color: var(--ink); background: var(--white);
+      resize: none; outline: none; line-height: 1.55;
+      min-height: 72px; max-height: 160px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .notes-textarea::placeholder { color: var(--muted); }
+    .notes-textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,146,42,0.1); }
+    .notes-actions {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 8px;
+    }
+    .notes-count { font-size: 0.67rem; color: var(--muted); }
+    .note-add-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--navy); color: var(--cream); border: none; border-radius: 8px;
+      padding: 6px 14px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .note-add-btn:hover { background: var(--navy-2); }
+    .note-add-btn svg { width: 12px; height: 12px; stroke-width: 2.5; }
+    .note-add-btn:disabled { opacity: 0.4; cursor: default; }
+
+    .notes-toggle-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: transparent; color: var(--navy-2); border: 1.5px solid var(--cream-3); border-radius: 9px;
+      padding: 6px 14px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .notes-toggle-btn:hover { background: var(--cream-2); }
+    .notes-toggle-btn.active {
+      background: rgba(184,146,42,0.12); color: var(--gold);
+      box-shadow: 0 0 0 1.5px var(--gold-2); border-color: transparent;
+    }
+    .notes-toggle-btn svg { width: 14px; height: 14px; stroke-width: 2; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--navy); color: var(--cream);
+      padding: 10px 22px; border-radius: 30px; font-size: 0.8rem; font-weight: 500;
+      box-shadow: 0 4px 20px rgba(30,45,74,0.2);
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 999; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Active tool indicator dot on size-dot when eraser */
+    .tool-btn[data-tool="eraser"].active { color: #e53e3e; border-color: #e53e3e; background: rgba(229,62,62,0.08); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <a href="advohq-home.html" class="s-btn" data-tip="Home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/></svg>
+      </a>
+      <div class="s-divider"></div>
+      <button class="s-btn active" data-tip="Editor">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
+      <a href="advohq-settings.html" class="s-btn" data-tip="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </a>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-avatar">T</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <a href="advohq-home.html" class="back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </a>
+        <span class="topbar-sep">|</span>
+        <span class="topbar-filename" id="topbarFilename">Untitled Document</span>
+        <span class="topbar-badge">Editing</span>
+      </div>
+      <div class="topbar-right">
+        <button class="ai-toggle-btn" id="aiToggleBtn" onclick="toggleAI()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>
+          Ask AdvoAI
+        </button>
+        <button class="notes-toggle-btn" id="notesToggleBtn" onclick="toggleNotes()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Notes
+        </button>
+        <button class="save-btn" onclick="toast('Document saved')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor Layout -->
+    <div class="editor-layout">
+
+      <!-- ── TOOLS PANEL ── -->
+      <div class="tools-panel">
+
+        <!-- PEN -->
+        <span class="tool-section-label">Pen</span>
+        <button class="tool-btn active" data-tool="pen" onclick="setTool('pen')" title="Pen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span class="tool-label">Pen</span>
+        </button>
+        <div class="color-grid pen-colors" id="penColors">
+          <div class="color-swatch selected" data-color="#1a2230" onclick="setPenColor(this)"></div>
+          <div class="color-swatch" data-color="#e53e3e" onclick="setPenColor(this)"></div>
+          <div class="color-swatch" data-color="#2b6cb0" onclick="setPenColor(this)"></div>
+          <div class="color-swatch" data-color="#276749" onclick="setPenColor(this)"></div>
+          <div class="color-swatch" data-color="#b8922a" onclick="setPenColor(this)"></div>
+          <div class="color-swatch" data-color="#6b46c1" onclick="setPenColor(this)"></div>
+        </div>
+
+        <div class="tool-sep"></div>
+
+        <!-- HIGHLIGHT -->
+        <span class="tool-section-label">Highlight</span>
+        <button class="tool-btn" data-tool="highlight" onclick="setTool('highlight')" title="Highlighter">
+          <!-- highlighter icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 7-8 11-8-11 3-7z"/><line x1="9" y1="3" x2="9" y2="10"/><line x1="15" y1="3" x2="15" y2="10"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span class="tool-label">Mark</span>
+        </button>
+        <div class="color-grid hl-colors" id="hlColors">
+          <div class="color-swatch selected" data-color="rgba(255,235,59,0.55)" onclick="setHlColor(this)" title="Yellow"></div>
+          <div class="color-swatch" data-color="rgba(102,187,106,0.5)" onclick="setHlColor(this)" title="Green"></div>
+          <div class="color-swatch" data-color="rgba(239,83,80,0.45)" onclick="setHlColor(this)" title="Red"></div>
+          <div class="color-swatch" data-color="rgba(66,165,245,0.5)" onclick="setHlColor(this)" title="Blue"></div>
+          <div class="color-swatch" data-color="rgba(255,152,0,0.5)" onclick="setHlColor(this)" title="Orange"></div>
+          <div class="color-swatch" data-color="rgba(186,104,200,0.5)" onclick="setHlColor(this)" title="Purple"></div>
+        </div>
+
+        <div class="tool-sep"></div>
+
+        <!-- STROKE SIZE -->
+        <span class="tool-section-label">Size</span>
+        <div class="size-row">
+          <div class="size-dot sm" data-size="2" onclick="setSize(this)" title="Thin"></div>
+          <div class="size-dot md selected" data-size="4" onclick="setSize(this)" title="Medium"></div>
+          <div class="size-dot lg" data-size="8" onclick="setSize(this)" title="Thick"></div>
+        </div>
+
+        <div class="tool-sep"></div>
+
+        <!-- ERASER -->
+        <span class="tool-section-label">Erase</span>
+        <button class="tool-btn" data-tool="eraser" onclick="setTool('eraser')" title="Eraser">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l11-11 6 6-3.5 3.5"/><path d="M6.5 17.5l4-4"/></svg>
+          <span class="tool-label">Erase</span>
+        </button>
+
+        <div class="tool-sep"></div>
+
+        <!-- UNDO / CLEAR -->
+        <span class="tool-section-label">Edit</span>
+        <button class="tool-btn" onclick="undoStroke()" title="Undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+          <span class="tool-label">Undo</span>
+        </button>
+        <button class="tool-btn" onclick="clearCanvas()" title="Clear all">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <span class="tool-label">Clear</span>
+        </button>
+
+      </div>
+
+      <!-- ── DOCUMENT AREA ── -->
+      <div class="document-area" id="documentArea">
+        <div class="doc-page-wrap" id="docPageWrap">
+          <div class="doc-page" id="docPage">
+            <!-- Empty hint -->
+            <div class="doc-hint" id="docHint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <p>Pick a tool and start annotating</p>
+            </div>
+            <canvas id="annotationCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AI SIDEBAR ── -->
+      <div class="ai-sidebar" id="aiSidebar">
+        <div class="ai-sidebar-inner">
+
+          <div class="ai-header">
+            <div class="ai-title">
+              <div class="ai-dot"></div>
+              AdvoAI
+            </div>
+            <button class="ai-close" onclick="toggleAI()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div class="ai-body" id="aiBody">
+            <div class="ai-suggestions" id="aiSuggestions">
+              <div class="ai-suggestion-label">Quick actions</div>
+              <button class="ai-chip" onclick="askAI('Summarise this document')">
+                <span class="chip-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="chip-text">Summarise this document</span>
+              </button>
+              <button class="ai-chip" onclick="askAI('Find key clauses in this document')">
+                <span class="chip-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="chip-text">Find key clauses</span>
+              </button>
+              <button class="ai-chip" onclick="askAI('List action items from this document')">
+                <span class="chip-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="chip-text">List action items</span>
+              </button>
+              <button class="ai-chip" onclick="askAI('Draft a response to this document')">
+                <span class="chip-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="chip-text">Draft a response</span>
+              </button>
+            </div>
+
+            <div class="ai-response" id="aiResponse">
+              <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+              </div>
+              <div class="ai-response-bubble" id="aiResponseBubble" style="display:none;">
+                <div class="ai-response-label">AdvoAI</div>
+                <div id="aiResponseText"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-input-area">
+            <div class="ai-input-wrap">
+              <button class="ai-icon-btn" onclick="toast('Attach file')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <textarea class="ai-textarea" id="aiInput" placeholder="Ask AdvoAI…" rows="1"
+                onkeydown="handleAiKey(event)"
+                oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+              <button class="ai-send-btn" onclick="sendAiMessage()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+            <div class="ai-disclaimer">AdvoAI can make mistakes. <a href="#" onclick="return false">Learn more</a></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── NOTES PANEL ── -->
+      <div class="notes-panel" id="notesPanel">
+        <div class="notes-inner">
+
+          <div class="notes-header">
+            <div class="notes-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Notes
+            </div>
+            <button class="notes-close" onclick="toggleNotes()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div class="notes-list" id="notesList">
+            <div class="note-empty" id="noteEmpty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <p>No notes yet. Add your first note below.</p>
+            </div>
+          </div>
+
+          <div class="notes-input-area">
+            <textarea class="notes-textarea" id="notesTextarea" placeholder="Write a note about this document…"
+              oninput="updateNoteBtn()"
+              onkeydown="handleNoteKey(event)"></textarea>
+            <div class="notes-actions">
+              <span class="notes-count" id="notesCount">0 notes</span>
+              <button class="note-add-btn" id="noteAddBtn" onclick="addNote()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add note
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+  /* ── URL param ── */
+  const params = new URLSearchParams(location.search);
+  const fname = params.get('file');
+  if (fname) document.getElementById('topbarFilename').textContent = decodeURIComponent(fname);
+
+  /* ── Canvas setup ── */
+  const canvas  = document.getElementById('annotationCanvas');
+  const ctx     = canvas.getContext('2d');
+  const docPage = document.getElementById('docPage');
+  const hint    = document.getElementById('docHint');
+
+  function resizeCanvas() {
+    const rect = docPage.getBoundingClientRect();
+    const dpr  = window.devicePixelRatio || 1;
+    // save current drawing
+    const img = canvas.toDataURL();
+    canvas.width  = docPage.offsetWidth  * dpr;
+    canvas.height = docPage.offsetHeight * dpr;
+    canvas.style.width  = docPage.offsetWidth  + 'px';
+    canvas.style.height = docPage.offsetHeight + 'px';
+    ctx.scale(dpr, dpr);
+    // restore drawing
+    const image = new Image();
+    image.onload = () => ctx.drawImage(image, 0, 0);
+    image.src = img;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  /* ── State ── */
+  let activeTool  = 'pen';
+  let penColor    = '#1a2230';
+  let hlColor     = 'rgba(255,235,59,0.55)';
+  let strokeSize  = 4;
+  let isDrawing   = false;
+  let strokes     = [];   // for undo
+  let currentPath = [];
+
+  /* ── Tool switching ── */
+  function setTool(tool) {
+    activeTool = tool;
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+    canvas.classList.toggle('eraser-mode', tool === 'eraser');
+  }
+
+  function setPenColor(el) {
+    penColor = el.dataset.color;
+    document.querySelectorAll('#penColors .color-swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    setTool('pen');
+  }
+
+  function setHlColor(el) {
+    hlColor = el.dataset.color;
+    document.querySelectorAll('#hlColors .color-swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    setTool('highlight');
+  }
+
+  function setSize(el) {
+    strokeSize = parseInt(el.dataset.size);
+    document.querySelectorAll('.size-dot').forEach(d => d.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  /* ── Drawing ── */
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    isDrawing = true;
+    hint.style.display = 'none';
+    const pos = getPos(e);
+    currentPath = [pos];
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    applyStyle();
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    currentPath.push(pos);
+    if (activeTool === 'eraser') {
+      const es = strokeSize * 6;
+      ctx.clearRect(pos.x - es/2, pos.y - es/2, es, es);
+    } else {
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }
+  }
+
+  function endDraw(e) {
+    if (!isDrawing) return;
+    isDrawing = false;
+    if (activeTool !== 'eraser') {
+      strokes.push({ tool: activeTool, color: activeTool === 'pen' ? penColor : hlColor, size: strokeSize, path: [...currentPath] });
+    }
+    ctx.closePath();
+  }
+
+  function applyStyle() {
+    if (activeTool === 'pen') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = penColor;
+      ctx.lineWidth   = strokeSize;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+    } else if (activeTool === 'highlight') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = hlColor;
+      ctx.lineWidth   = strokeSize * 5;
+      ctx.lineCap     = 'square';
+      ctx.lineJoin    = 'round';
+    }
+  }
+
+  canvas.addEventListener('mousedown',  startDraw);
+  canvas.addEventListener('mousemove',  draw);
+  canvas.addEventListener('mouseup',    endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove',  draw,      { passive: false });
+  canvas.addEventListener('touchend',   endDraw);
+
+  /* ── Undo ── */
+  function undoStroke() {
+    strokes.pop();
+    redraw();
+  }
+
+  function redraw() {
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    strokes.forEach(s => {
+      if (!s.path.length) return;
+      ctx.beginPath();
+      ctx.moveTo(s.path[0].x, s.path[0].y);
+      if (s.tool === 'pen') {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha  = 1;
+        ctx.strokeStyle  = s.color;
+        ctx.lineWidth    = s.size;
+        ctx.lineCap      = 'round';
+        ctx.lineJoin     = 'round';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha  = 0.28;
+        ctx.strokeStyle  = s.color;
+        ctx.lineWidth    = s.size * 5;
+        ctx.lineCap      = 'square';
+        ctx.lineJoin     = 'round';
+      }
+      s.path.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+      ctx.closePath();
+    });
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    if (strokes.length === 0) hint.style.display = '';
+  }
+
+  function clearCanvas() {
+    strokes = [];
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    hint.style.display = '';
+    toast('Canvas cleared');
+  }
+
+  /* ── AI panel ── */
+  let aiOpen = false;
+  function toggleAI() {
+    aiOpen = !aiOpen;
+    document.getElementById('aiSidebar').classList.toggle('open', aiOpen);
+    document.getElementById('aiToggleBtn').classList.toggle('active', aiOpen);
+  }
+
+  function askAI(question) {
+    if (!aiOpen) toggleAI();
+    document.getElementById('aiSuggestions').style.display = 'none';
+    const response = document.getElementById('aiResponse');
+    const typing   = document.getElementById('typingIndicator');
+    const bubble   = document.getElementById('aiResponseBubble');
+    response.classList.add('show');
+    typing.classList.add('show');
+    bubble.style.display = 'none';
+    setTimeout(() => {
+      typing.classList.remove('show');
+      bubble.style.display = 'block';
+      document.getElementById('aiResponseText').innerHTML =
+        `I've analysed the document for: <em>"${question}"</em><br><br>Upload or open a document to get a detailed response. For now this is a blank canvas — add your file from the Library.`;
+      document.getElementById('aiBody').scrollTop = 9999;
+    }, 1400);
+  }
+
+  function sendAiMessage() {
+    const input = document.getElementById('aiInput');
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = ''; input.style.height = 'auto';
+    askAI(q);
+  }
+
+  function handleAiKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiMessage(); }
+  }
+
+  /* ── Notes panel ── */
+  let notesOpen = false;
+  let notes = [];
+
+  function toggleNotes() {
+    notesOpen = !notesOpen;
+    document.getElementById('notesPanel').classList.toggle('open', notesOpen);
+    document.getElementById('notesToggleBtn').classList.toggle('active', notesOpen);
+  }
+
+  function updateNoteBtn() {
+    const val = document.getElementById('notesTextarea').value.trim();
+    document.getElementById('noteAddBtn').disabled = !val;
+  }
+
+  function handleNoteKey(e) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addNote(); }
+  }
+
+  function addNote() {
+    const ta = document.getElementById('notesTextarea');
+    const text = ta.value.trim();
+    if (!text) return;
+    const note = { id: Date.now(), text, time: new Date() };
+    notes.unshift(note);
+    ta.value = '';
+    ta.style.height = 'auto';
+    document.getElementById('noteAddBtn').disabled = true;
+    renderNotes();
+  }
+
+  function deleteNote(id) {
+    notes = notes.filter(n => n.id !== id);
+    renderNotes();
+  }
+
+  function renderNotes() {
+    const list = document.getElementById('notesList');
+    const empty = document.getElementById('noteEmpty');
+    const count = document.getElementById('notesCount');
+    count.textContent = notes.length + ' note' + (notes.length !== 1 ? 's' : '');
+
+    // Remove old cards
+    list.querySelectorAll('.note-card').forEach(c => c.remove());
+
+    if (notes.length === 0) {
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    notes.forEach(n => {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      card.innerHTML = `
+        <div class="note-text">${escHtml(n.text)}</div>
+        <div class="note-meta">
+          <span>${formatTime(n.time)}</span>
+          <button class="note-delete" onclick="deleteNote(${n.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            Delete
+          </button>
+        </div>`;
+      list.appendChild(card);
+    });
+  }
+
+  function escHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+
+  function formatTime(d) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' +
+           d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  }
+
+  renderNotes();
+  function toast(msg) {
+    const el = document.getElementById('toastEl');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+</script>
+</body>
+</html>
